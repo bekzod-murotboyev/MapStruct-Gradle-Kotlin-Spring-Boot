@@ -80,6 +80,8 @@ data class Response<T>(
 
 - __Mapper__
 
+___`unmappedTargetPolicy = ReportingPolicy.IGNORE` makes build successfully in spite of fact that some fileds of target class are remaining without value___ 
+
 ```kotlin
 import org.mapstruct.Mapper
 import org.mapstruct.Mapping
