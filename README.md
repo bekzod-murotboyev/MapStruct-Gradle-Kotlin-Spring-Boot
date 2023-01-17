@@ -13,7 +13,7 @@ ___At first we need to add [kapt](https://kotlinlang.org/docs/reference/kapt.htm
 ___`mapstruct-processor` is required to generate the mapper implementation during build-time, while `kapt` is the Kotlin Annotation Processing Tool, and it is used to reference the generated code from Kotlin___
 ```groovy
 plugins {
-    kotlin("kapt") version "1.3.72"
+    kotlin("kapt") version "1.6.21"
 }
 
 dependencies {
@@ -37,23 +37,29 @@ dependencies {
 - ___So, Now we need to create data classes for working with data directly___
 
 ```kotlin
+
+import java.time.LocalDateTime
+
 // MODELS
 
 data class Book( // Main class which we want to use
-    val id: Int,
-    val name: String,
-    val author: Author
+    var id: Int,
+    var name: String,
+    var author: Author?,
+    var createdDate:LocalDateTime?
 )
 
 data class Author( // Nested class
-    val id:Int,
-    val name:String
+    var id: Int,
+    var name: String
 )
 
 data class BookDTO( // DTO class for transfer data
-    val id:Int,
-    val name:String,
-    val authorName:String
+    var id: Int,
+    var name: String,
+    var authorName: String?,
+    var hasAuthor: Boolean,
+    var date: LocalDateTime
 )
 ```
 
@@ -80,26 +86,47 @@ data class Response<T>(
 
 - __Mapper__
 
-___`unmappedTargetPolicy = ReportingPolicy.IGNORE` makes build successfully in spite of fact that some fileds of target class are remaining without value___ 
+___`unmappedTargetPolicy = ReportingPolicy.IGNORE` makes build successfully in spite of fact that some fields of target class are remaining without value___
+___`unmappedTargetPolicy = ReportingPolicy.IGNORE` in case, the source is null, the mapping will be ignored___
+___`imports = [UUID::class]` makes import of given classes___
 
 ```kotlin
 import org.mapstruct.Mapper
 import org.mapstruct.Mapping
 import org.mapstruct.Mappings
+import java.time.LocalDateTime
 
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+@Mapper(
+    componentModel = "spring",
+    unmappedTargetPolicy = ReportingPolicy.IGNORE,
+    nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE,
+    imports = [LocalDateTime::class]
+)
 interface BookMapper {
 
 
     @Mappings(
         Mapping(source = "authorName", target = "author.name")
     )
-    fun bookDTOToBook(bookDTO: BookDTO):Book
+    fun bookDTOToBook(bookDTO: BookDTO): Book
 
     @Mappings(
         Mapping(source = "author.name", target = "authorName")
     )
-    fun bookToBookDTO(book: Book):BookDTO
+    @Mappings(
+        Mapping(
+            expression = "java(Objects.nonNull(author)",
+            target = "hasAuthor"
+        ) // EXPRESSION RETURNS VALUE TO TARGET FIELD
+    )
+    @Mappings(
+        Mapping(
+            source = "createdDate",
+            target = "date",
+            defaultExpression="java(LocalDateTime.now())"
+        ) // DEFAULT EXPRESSION RETURNS VALUE TO TARGET FIELD, IN CASE SOURCE IS NULL
+    )
+    fun bookToBookDTO(book: Book): BookDTO
 }
 ```
 
